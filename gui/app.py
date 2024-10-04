@@ -1,38 +1,68 @@
 import tkinter as tk
-from audio_processing.mic_capture import record_mic_audio
-from audio_processing.system_audio import record_system_audio
-from audio_processing.transcription import transcribe_audio
-from summarization.summarize import summarize_text
+import pyaudio
+import wave
+import threading
+
+# Global variable to control recording state
+is_recording = False
+
+def record_mic_audio(output_filename):
+    global is_recording
+    
+    chunk = 1024  # Record in chunks
+    format = pyaudio.paInt16  # 16-bit resolution
+    channels = 1  # Mono
+    rate = 44100  # Sample rate in Hz
+    p = pyaudio.PyAudio()
+
+    # Open the stream
+    stream = p.open(format=format, channels=channels, rate=rate, input=True, frames_per_buffer=chunk)
+
+    frames = []
+    print("Recording Mic Audio...")
+
+    # Record the audio in chunks until is_recording is False
+    while is_recording:
+        data = stream.read(chunk)
+        frames.append(data)
+
+    print("Recording complete")
+
+    # Stop and close the stream
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+
+    # Save the recorded audio to a file
+    wf = wave.open(output_filename, 'wb')
+    wf.setnchannels(channels)
+    wf.setsampwidth(p.get_sample_size(format))
+    wf.setframerate(rate)
+    wf.writeframes(b''.join(frames))
+    wf.close()
 
 def start_recording():
-    mic_output = "mic_output.wav"
-    system_output = "system_output.wav"
+    global is_recording
+    is_recording = True  # Set the flag to start recording
+    output_filename = 'mic_output.wav'  # Specify the output filename
+    
+    # Start recording in a new thread
+    threading.Thread(target=record_mic_audio, args=(output_filename,)).start()
 
-    # Record mic and system audio
-    record_mic_audio(mic_output)
-    record_system_audio(system_output)
-
-    # Transcribe both audios
-    mic_transcript = transcribe_audio(mic_output)
-    system_transcript = transcribe_audio(system_output)
-
-    # Combine and summarize
-    combined_text = mic_transcript + " " + system_transcript
-    summary = summarize_text(combined_text)
-
-    # Display summary in GUI
-    summary_label.config(text=summary)
+def stop_recording():
+    global is_recording
+    is_recording = False  # Set the flag to stop recording
 
 # Initialize GUI
 root = tk.Tk()
-root.title("Audio Summarizer")
+root.title("Audio Recorder")
 
 # Start button
-start_button = tk.Button(root, text="Start", command=start_recording)
+start_button = tk.Button(root, text="Start Recording", command=start_recording)
 start_button.pack()
 
-# Summary output
-summary_label = tk.Label(root, text="Summary will appear here.")
-summary_label.pack()
+# Stop button
+stop_button = tk.Button(root, text="Stop Recording", command=stop_recording)
+stop_button.pack()
 
 root.mainloop()
