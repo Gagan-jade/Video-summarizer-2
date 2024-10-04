@@ -1,2 +1,0 @@
-print("sk")
-print("helo")
