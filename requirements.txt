@@ -1,0 +1,5 @@
+PyAudio
+soundcard
+google-cloud-speech
+transformers
+sentence-transformers
